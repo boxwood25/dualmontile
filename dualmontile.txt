@@ -1,0 +1,240 @@
+commit 47d1bdfba2453200902ae97dffde6d76faeb1872
+Author: Lionel <lionel.busboom@gmx.de>
+Date:   Fri Oct 7 16:06:03 2022 +0200
+
+    Implemented the dualmontile layout for the default
+    dwm config.
+    
+    The dualmontile layout is comparable to the tile
+    layout, but is uses 2 monitors.
+
+diff --git a/config.def.h b/config.def.h
+index 061ad66..b9c82b4 100644
+--- a/config.def.h
++++ b/config.def.h
+@@ -39,7 +39,8 @@ static const int lockfullscreen = 1; /* 1 will force focus on the fullscreen win
+ 
+ static const Layout layouts[] = {
+ 	/* symbol     arrange function */
+-	{ "[]=",      tile },    /* first entry is default */
++	{ "[][]",     dualmontile },    /* first entry is default */
++	{ "[]=",      tile },
+ 	{ "><>",      NULL },    /* no layout function means floating behavior */
+ 	{ "[M]",      monocle },
+ };
+@@ -73,9 +74,10 @@ static const Key keys[] = {
+ 	{ MODKEY,                       XK_Return, zoom,           {0} },
+ 	{ MODKEY,                       XK_Tab,    view,           {0} },
+ 	{ MODKEY|ShiftMask,             XK_c,      killclient,     {0} },
+-	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[0]} },
+-	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[1]} },
+-	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[2]} },
++	{ MODKEY|ControlMask,		XK_t,      setlayout,      {.v = &layouts[0]} },
++	{ MODKEY,                       XK_t,      setlayout,      {.v = &layouts[1]} },
++	{ MODKEY,                       XK_f,      setlayout,      {.v = &layouts[2]} },
++	{ MODKEY,                       XK_m,      setlayout,      {.v = &layouts[3]} },
+ 	{ MODKEY,                       XK_space,  setlayout,      {0} },
+ 	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
+ 	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
+diff --git a/dwm.c b/dwm.c
+index e5efb6a..523184c 100644
+--- a/dwm.c
++++ b/dwm.c
+@@ -147,7 +147,9 @@ static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interac
+ static void arrange(Monitor *m);
+ static void arrangemon(Monitor *m);
+ static void attach(Client *c);
++static void attachall(Client *c);
+ static void attachstack(Client *c);
++static void attachallstack(Client *c);
+ static void buttonpress(XEvent *e);
+ static void checkotherwm(void);
+ static void cleanup(void);
+@@ -171,6 +173,7 @@ static void focusmon(const Arg *arg);
+ static void focusstack(const Arg *arg);
+ static Atom getatomprop(Client *c, Atom prop);
+ static int getrootptr(int *x, int *y);
++static Monitor *getstackmonitor(Monitor *m);
+ static long getstate(Window w);
+ static int gettextprop(Window w, Atom atom, char *text, unsigned int size);
+ static void grabbuttons(Client *c, int focused);
+@@ -181,6 +184,7 @@ static void killclient(const Arg *arg);
+ static void manage(Window w, XWindowAttributes *wa);
+ static void mappingnotify(XEvent *e);
+ static void maprequest(XEvent *e);
++static void mergeclients(Monitor *m, Monitor *stack);
+ static void monocle(Monitor *m);
+ static void motionnotify(XEvent *e);
+ static void movemouse(const Arg *arg);
+@@ -210,6 +214,7 @@ static void spawn(const Arg *arg);
+ static void tag(const Arg *arg);
+ static void tagmon(const Arg *arg);
+ static void tile(Monitor *m);
++static void dualmontile(Monitor *m);
+ static void togglebar(const Arg *arg);
+ static void togglefloating(const Arg *arg);
+ static void toggletag(const Arg *arg);
+@@ -316,7 +321,7 @@ int
+ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
+ {
+ 	int baseismin;
+-	Monitor *m = c->mon;
++	// Monitor *m = c->mon;
+ 
+ 	/* set minimum possible */
+ 	*w = MAX(1, *w);
+@@ -331,14 +336,14 @@ applysizehints(Client *c, int *x, int *y, int *w, int *h, int interact)
+ 		if (*y + *h + 2 * c->bw < 0)
+ 			*y = 0;
+ 	} else {
+-		if (*x >= m->wx + m->ww)
++		/* if (*x >= m->wx + m->ww)
+ 			*x = m->wx + m->ww - WIDTH(c);
+ 		if (*y >= m->wy + m->wh)
+ 			*y = m->wy + m->wh - HEIGHT(c);
+ 		if (*x + *w + 2 * c->bw <= m->wx)
+ 			*x = m->wx;
+ 		if (*y + *h + 2 * c->bw <= m->wy)
+-			*y = m->wy;
++			*y = m->wy; */
+ 	}
+ 	if (*h < bh)
+ 		*h = bh;
+@@ -409,6 +414,16 @@ attach(Client *c)
+ 	c->mon->clients = c;
+ }
+ 
++/* attaches the clients to the end of the client stack */
++void
++attachall(Client *c)
++{
++	Client **tc;
++
++	for (tc = &c->mon->clients; *tc; tc = &(*tc)->next);
++	*tc = c;
++}
++
+ void
+ attachstack(Client *c)
+ {
+@@ -416,6 +431,16 @@ attachstack(Client *c)
+ 	c->mon->stack = c;
+ }
+ 
++/* attaches the clients to the end of the stack */
++void
++attachallstack(Client *c)
++{
++	Client **tc;
++
++	for (tc = &c->mon->stack; *tc; tc = &(*tc)->snext);
++	*tc = c;
++}
++
+ void
+ buttonpress(XEvent *e)
+ {
+@@ -888,6 +913,16 @@ getrootptr(int *x, int *y)
+ 	return XQueryPointer(dpy, root, &dummy, &dummy, x, y, &di, &di, &dui);
+ }
+ 
++Monitor *
++getstackmonitor(Monitor *m)
++{
++	if (m->next)
++		return m->next;
++	if (mons != m)
++		return mons;
++	return NULL;
++}
++
+ long
+ getstate(Window w)
+ {
+@@ -1101,6 +1136,29 @@ maprequest(XEvent *e)
+ 		manage(ev->window, &wa);
+ }
+ 
++/* moves the clients of the stack monitor to the master monitor */
++void mergeclients(Monitor *m, Monitor *stack)
++{
++	Client *cstack = stack->clients;
++
++	if (!cstack)
++		return;
++
++	stack->clients = NULL;
++	stack->stack = NULL;
++
++	Client *c;
++	for (c = cstack; c; c = c->next) {
++		c->mon = m;
++		c->tags = m->tagset[m->seltags];
++	}
++
++	attachall(cstack);
++	attachallstack(cstack);
++	focus(NULL);
++	arrange(NULL);
++}
++
+ void
+ monocle(Monitor *m)
+ {
+@@ -1503,8 +1561,17 @@ setlayout(const Arg *arg)
+ {
+ 	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
+ 		selmon->sellt ^= 1;
+-	if (arg && arg->v)
++	if (arg && arg->v) {
++		if (((Layout *)arg->v)->arrange == dualmontile)
++		{
++			if (!getstackmonitor(selmon))
++				return;
++
++			mergeclients(selmon, getstackmonitor(selmon));
++		}
++
+ 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
++	}
+ 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
+ 	if (selmon->sel)
+ 		arrange(selmon);
+@@ -1694,6 +1761,37 @@ tile(Monitor *m)
+ 		}
+ }
+ 
++void
++dualmontile(Monitor *m)
++{
++	unsigned int i, n, h, my, ty;
++	Client *c;
++	Monitor *stack;
++
++	stack = getstackmonitor(m);
++	if (!stack) {
++		tile(m);
++		return;
++	}
++
++	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
++	if (n == 0)
++		return;
++
++	for (i = my = ty = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), i++)
++		if (i < m->nmaster) {
++			h = (m->wh - my) / (MIN(n, m->nmaster) - i);
++			resize(c, m->wx, m->wy + my, m->ww - (2*c->bw), h - (2*c->bw), 0);
++			if (my + HEIGHT(c) < m->wh)
++				my += HEIGHT(c);
++		} else {
++			h = (stack->wh - ty) / (n - i);
++			resize(c, stack->wx, stack->wy + ty, stack->ww - (2*c->bw), h - (2*c->bw), 0);
++			if (ty + HEIGHT(c) < stack->wh)
++				ty += HEIGHT(c);
++		}
++}
++
+ void
+ togglebar(const Arg *arg)
+ {
