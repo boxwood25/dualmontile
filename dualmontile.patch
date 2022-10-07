@@ -1,15 +1,17 @@
-From 47d1bdfba2453200902ae97dffde6d76faeb1872 Mon Sep 17 00:00:00 2001
+From 4b2c687369ec7e621b60c27f9629713de41771b1 Mon Sep 17 00:00:00 2001
 From: Lionel <lionel.busboom@gmx.de>
 Date: Fri, 7 Oct 2022 16:06:03 +0200
 Subject: [PATCH] Implemented the dualmontile layout for the default dwm
  config.
 
 The dualmontile layout is comparable to the tile
-layout, but is uses 2 monitors.
+layout, but it uses 2 monitors.
+
+EDIT: fixed a bug
 ---
- config.def.h |  10 +++--
- dwm.c        | 106 +++++++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 108 insertions(+), 8 deletions(-)
+ config.def.h | 10 +++---
+ dwm.c        | 96 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 99 insertions(+), 7 deletions(-)
 
 diff --git a/config.def.h b/config.def.h
 index 061ad66..b9c82b4 100644
@@ -40,7 +42,7 @@ index 061ad66..b9c82b4 100644
  	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
  	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
 diff --git a/dwm.c b/dwm.c
-index e5efb6a..523184c 100644
+index e5efb6a..7b63e5d 100644
 --- a/dwm.c
 +++ b/dwm.c
 @@ -147,7 +147,9 @@ static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interac
@@ -184,26 +186,7 @@ index e5efb6a..523184c 100644
  void
  monocle(Monitor *m)
  {
-@@ -1503,8 +1561,17 @@ setlayout(const Arg *arg)
- {
- 	if (!arg || !arg->v || arg->v != selmon->lt[selmon->sellt])
- 		selmon->sellt ^= 1;
--	if (arg && arg->v)
-+	if (arg && arg->v) {
-+		if (((Layout *)arg->v)->arrange == dualmontile)
-+		{
-+			if (!getstackmonitor(selmon))
-+				return;
-+
-+			mergeclients(selmon, getstackmonitor(selmon));
-+		}
-+
- 		selmon->lt[selmon->sellt] = (Layout *)arg->v;
-+	}
- 	strncpy(selmon->ltsymbol, selmon->lt[selmon->sellt]->symbol, sizeof selmon->ltsymbol);
- 	if (selmon->sel)
- 		arrange(selmon);
-@@ -1694,6 +1761,37 @@ tile(Monitor *m)
+@@ -1694,6 +1752,38 @@ tile(Monitor *m)
  		}
  }
  
@@ -219,6 +202,7 @@ index e5efb6a..523184c 100644
 +		tile(m);
 +		return;
 +	}
++	mergeclients(m, stack);
 +
 +	for (n = 0, c = nexttiled(m->clients); c; c = nexttiled(c->next), n++);
 +	if (n == 0)
