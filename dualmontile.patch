@@ -1,12 +1,15 @@
-commit 47d1bdfba2453200902ae97dffde6d76faeb1872
-Author: Lionel <lionel.busboom@gmx.de>
-Date:   Fri Oct 7 16:06:03 2022 +0200
+From 47d1bdfba2453200902ae97dffde6d76faeb1872 Mon Sep 17 00:00:00 2001
+From: Lionel <lionel.busboom@gmx.de>
+Date: Fri, 7 Oct 2022 16:06:03 +0200
+Subject: [PATCH] Implemented the dualmontile layout for the default dwm
+ config.
 
-    Implemented the dualmontile layout for the default
-    dwm config.
-    
-    The dualmontile layout is comparable to the tile
-    layout, but is uses 2 monitors.
+The dualmontile layout is comparable to the tile
+layout, but is uses 2 monitors.
+---
+ config.def.h |  10 +++--
+ dwm.c        | 106 +++++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 108 insertions(+), 8 deletions(-)
 
 diff --git a/config.def.h b/config.def.h
 index 061ad66..b9c82b4 100644
@@ -238,3 +241,6 @@ index e5efb6a..523184c 100644
  void
  togglebar(const Arg *arg)
  {
+-- 
+2.38.0
+
