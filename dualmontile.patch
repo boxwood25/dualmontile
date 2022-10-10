@@ -1,4 +1,4 @@
-From 4b2c687369ec7e621b60c27f9629713de41771b1 Mon Sep 17 00:00:00 2001
+From 336dedf884ea09fdaa674fd0fd66f35b1afe3841 Mon Sep 17 00:00:00 2001
 From: Lionel <lionel.busboom@gmx.de>
 Date: Fri, 7 Oct 2022 16:06:03 +0200
 Subject: [PATCH] Implemented the dualmontile layout for the default dwm
@@ -8,10 +8,12 @@ The dualmontile layout is comparable to the tile
 layout, but it uses 2 monitors.
 
 EDIT: fixed a bug
+
+EDIT: Changed a behaviour in the layout
 ---
  config.def.h | 10 +++---
- dwm.c        | 96 ++++++++++++++++++++++++++++++++++++++++++++++++++--
- 2 files changed, 99 insertions(+), 7 deletions(-)
+ dwm.c        | 94 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 2 files changed, 97 insertions(+), 7 deletions(-)
 
 diff --git a/config.def.h b/config.def.h
 index 061ad66..b9c82b4 100644
@@ -42,7 +44,7 @@ index 061ad66..b9c82b4 100644
  	{ MODKEY|ShiftMask,             XK_space,  togglefloating, {0} },
  	{ MODKEY,                       XK_0,      view,           {.ui = ~0 } },
 diff --git a/dwm.c b/dwm.c
-index e5efb6a..7b63e5d 100644
+index e5efb6a..c2774c9 100644
 --- a/dwm.c
 +++ b/dwm.c
 @@ -147,7 +147,9 @@ static int applysizehints(Client *c, int *x, int *y, int *w, int *h, int interac
@@ -156,7 +158,7 @@ index e5efb6a..7b63e5d 100644
  long
  getstate(Window w)
  {
-@@ -1101,6 +1136,29 @@ maprequest(XEvent *e)
+@@ -1101,6 +1136,27 @@ maprequest(XEvent *e)
  		manage(ev->window, &wa);
  }
  
@@ -172,10 +174,8 @@ index e5efb6a..7b63e5d 100644
 +	stack->stack = NULL;
 +
 +	Client *c;
-+	for (c = cstack; c; c = c->next) {
++	for (c = cstack; c; c = c->next)
 +		c->mon = m;
-+		c->tags = m->tagset[m->seltags];
-+	}
 +
 +	attachall(cstack);
 +	attachallstack(cstack);
@@ -186,7 +186,7 @@ index e5efb6a..7b63e5d 100644
  void
  monocle(Monitor *m)
  {
-@@ -1694,6 +1752,38 @@ tile(Monitor *m)
+@@ -1694,6 +1750,38 @@ tile(Monitor *m)
  		}
  }
  
